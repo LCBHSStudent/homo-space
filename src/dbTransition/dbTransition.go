@@ -5,7 +5,10 @@ import (
 	"log"
 	"math/rand"
 	"strconv"
+	"strings"
 	"time"
+	
+	"CQApp/src/common"
 )
 
 var (
@@ -20,7 +23,7 @@ func Init(db *sql.DB) {
 	CreateTableIfNotExist("USER",
 		`
 (
-	ID      INT     NOT NULL    PRIMARY KEY,
+	ID      BIGINT  NOT NULL    PRIMARY KEY,
 	TICKET  INT     NOT NULL,
 	DAILY_LIMIT INT NOT NULL    DEFAULT 0
 );
@@ -28,7 +31,7 @@ func Init(db *sql.DB) {
 	CreateTableIfNotExist("HOMO",
 		`
 (
-	ID          INT     NOT NULL    PRIMARY KEY   AUTO_INCREMENT,
+	ID          BIGINT           NOT NULL    PRIMARY KEY   AUTO_INCREMENT,
 	NAME        VARCHAR(128)     NOT NULL,
 	DESCRIPTION VARCHAR(255)     DEFAULT `+"'妹有描述desu'," +`
 	RARE        VARCHAR(15)      NOT NULL,
@@ -96,7 +99,7 @@ func AddUser(id int64) {
 		log.Fatal(err)
 	}
 	if count == 0 {
-		_, err := aliasDB.Exec("INSERT INTO USER(ID,TICKET,DAILY_LIMIT) VALUES (?,?,?)", id, 45, 0)
+		_, err := aliasDB.Exec("INSERT INTO USER(ID,TICKET,DAILY_LIMIT) VALUES (?,?,?)", id, 90, 0)
 		if err != nil {
 			panic(err)
 		}
@@ -142,7 +145,7 @@ func DetectDailyLimit(id int64) bool {
 	if err != nil {
 		panic(err)
 	}
-	if daily < 20 {
+	if daily < 25 {
 		_, _ = aliasDB.Exec("UPDATE USER SET DAILY_LIMIT=? WHERE ID=?", daily+1, id)
 		return false
 	} else {
@@ -163,6 +166,7 @@ func IncreaseUserTicket(id int64, count int64) {
 }
 
 func NewHomoGet(id int64, HomoID int, HomoName string) {
+	rand.Seed(time.Now().UnixNano())
 	var count int64
 	tableId := strconv.FormatInt(id,10)
 	cntQuery :=  "SELECT count(*) FROM `" + tableId + "` WHERE HOMO_ID=?"
@@ -253,6 +257,42 @@ func GetOnesAsset(id int64) (homo []string) {
 		}
 	}
 	return homo
+}
+
+func DisplaySingleHomoInfo(name string) string {
+	var ID, MaxLevel int
+	var InitialHP, InitialATN, InitialINT, InitialDEF, InitialRES, InitialSPD, InitialLUK int
+	var GrowthHP, GrowthATN, GrowthINT, GrowthDEF, GrowthRES, GrowthSPD, GrowthLUK int
+	var Name, DESCRIPTION, RARE string
+	var ActiveSkills [4]int
+	var PassiveSkills [2]int
+	var Acquirable, UP bool
+	err := aliasDB.QueryRow(
+		"SELECT * FROM HOMO WHERE NAME=?",
+		name).Scan(&ID, &Name, &DESCRIPTION, &RARE, &MaxLevel,
+			&InitialHP, &InitialATN, &InitialINT, &InitialDEF, &InitialRES, &InitialSPD, &InitialLUK,
+			&GrowthHP, &GrowthATN, &GrowthINT, &GrowthDEF, &GrowthRES, &GrowthSPD, &GrowthLUK,
+			&ActiveSkills[0], &ActiveSkills[1], &ActiveSkills[2], &ActiveSkills[3],
+			&PassiveSkills[0], &PassiveSkills[1], &Acquirable, &UP)
+	if err != nil {
+		return err.Error()
+	}
+	msg := strings.Join([]string{
+		"[No.", strconv.Itoa(ID), "] " , Name, "\n",
+		"稀有度: ", RARE, "\n【", DESCRIPTION, "】 最大等级: ", strconv.Itoa(MaxLevel),
+		"\n初始属性: \n", "HP: ", strconv.Itoa(InitialHP), "  物理攻击: ", strconv.Itoa(InitialATN),
+		"\n魔法攻击: ", strconv.Itoa(InitialINT), "  物理防御: ", strconv.Itoa(InitialDEF),
+		"\n魔法防御: ", strconv.Itoa(InitialRES), "  速度: ", strconv.Itoa(InitialSPD), "  幸运: ", strconv.Itoa(InitialLUK),
+		"\n成长属性: \n", "物理攻击: ", strconv.Itoa(GrowthATN),
+		"\n魔法攻击: ", strconv.Itoa(GrowthINT), "  物理防御: ", strconv.Itoa(GrowthDEF),
+		"\n魔法防御: ", strconv.Itoa(GrowthRES), "  速度: ", strconv.Itoa(GrowthSPD), "  幸运: ", strconv.Itoa(GrowthLUK),
+		"\n主动技能：", "[", common.SkillList[0], "], " , "[", common.SkillList[0], "], ",
+		"[", common.SkillList[0], "], ", "[", common.SkillList[0], "]",
+		"\n被动技能：", "[", common.SkillList[0], "], ", "[", common.SkillList[0], "]",
+		"\n可否转蛋获得: ", strconv.FormatBool(Acquirable),
+		"\n是否概率UP中: ", strconv.FormatBool(UP),
+	}, "")
+	return msg
 }
 
 func GetConn() *sql.DB {

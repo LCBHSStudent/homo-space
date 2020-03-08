@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"runtime"
 	"strconv"
+	"time"
 	
 	"CQApp/src/dbTransition"
 	"github.com/catsworld/qq-bot-api"
@@ -13,7 +14,7 @@ import (
 var aliasBot *qqbotapi.BotAPI
 var createUserTable = `
 (
-	HOMO_ID             INT         NOT NULL    PRIMARY KEY,
+	HOMO_ID             BIGINT      NOT NULL    PRIMARY KEY,
 	HOMO_NAME           CHAR(50),
 	HOMO_LEVEL          INT,
 	HOMO_POTENTIALITY   INT,
@@ -24,7 +25,7 @@ var createUserTable = `
 
 type Homo = dbTransition.Homo
 
-var prob  = [3]int{1, 6, 100}
+var prob  = [3]int{1, 10, 100}
 var RareN   []Homo
 var RareSR  []Homo
 var RareUR  []Homo
@@ -54,6 +55,8 @@ func GetHomoList() {
 }
 
 func draw(id int64, msg *qqbotapi.FlatSender) *qqbotapi.FlatSender {
+	rand.Seed(time.Now().UnixNano())
+	
 	msg = msg.NewLine()
 	
 	value   := rand.Intn(100) + 1
@@ -89,8 +92,13 @@ func draw(id int64, msg *qqbotapi.FlatSender) *qqbotapi.FlatSender {
 
 func SingleDraw(update qqbotapi.Update) {
 	id := update.Message.From.ID
+	dbTransition.AddUser(update.Message.From.ID)
 	
 	msg := aliasBot.NewMessage(update.GroupID, "group").At(strconv.FormatInt(id, 10))
+	if len(RareUR) == 0 || len(RareN) == 0 || len(RareSR) == 0 {
+		msg.Text("请先补充蛋池").Send()
+		return
+	}
 	
 	if dbTransition.GetUserTicket(id) < 5 {
 		msg.NewLine().Text("恁的转蛋券尚不足5!").Send()
@@ -98,16 +106,23 @@ func SingleDraw(update qqbotapi.Update) {
 	}
 	dbTransition.IncreaseUserTicket(id, -5)
 	
-	dbTransition.AddUser(update.Message.From.ID)
+	
 	dbTransition.CreateTableIfNotExist(
 		"`"+strconv.FormatInt(update.Message.From.ID, 10)+"`", createUserTable)
+	
 	draw(id, msg).Send()
 }
 
 func MultiDraw(update qqbotapi.Update) {
 	id := update.Message.From.ID
+	dbTransition.AddUser(update.Message.From.ID)
 	
 	msg := aliasBot.NewMessage(update.GroupID, "group").At(strconv.FormatInt(id, 10))
+	
+	if len(RareUR) == 0 || len(RareN) == 0 || len(RareSR) == 0 {
+		msg.Text("请先补充蛋池").Send()
+		return
+	}
 	
 	if dbTransition.GetUserTicket(id) < 45 {
 		msg.NewLine().Text("恁的转蛋券尚不足45!").Send()
@@ -115,9 +130,10 @@ func MultiDraw(update qqbotapi.Update) {
 	}
 	dbTransition.IncreaseUserTicket(id, -45)
 	
-	dbTransition.AddUser(update.Message.From.ID)
+	
 	dbTransition.CreateTableIfNotExist(
 		"`"+strconv.FormatInt(update.Message.From.ID, 10)+"`", createUserTable)
+	
 	for i := 0; i < 10; i++ {
 		msg = draw(id, msg)
 	}
@@ -125,6 +141,7 @@ func MultiDraw(update qqbotapi.Update) {
 }
 
 func ShowTicketCnt(id int64, group int64) {
+	dbTransition.AddUser(id)
 	cnt := dbTransition.GetUserTicket(id)
 	if cnt != -810 {
 		aliasBot.NewMessage(group, "group").

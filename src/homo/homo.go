@@ -11,6 +11,13 @@ import (
 
 var aliasBot *qqbotapi.BotAPI
 
+type BattleGround struct {
+	HostID      int64
+	GuestID     int64
+	RoomID      int
+}
+
+
 func Init(bot *qqbotapi.BotAPI) {
 	if bot == nil {
 		panic("failed to bind a nil value")
@@ -27,7 +34,7 @@ func EditHomo(
 	aliasBot.NewMessage(fromGroup, "group").
 		At(strconv.FormatInt(fromQQ, 10)).
 		NewLine().
-		Text("可以开始编辑HOMO信息了").Send()
+		Text("可以开始编辑HOMO信息了,使用 帮助 查看说明").Send()
 	
 	for update := range updates {
 		if update.Message.From.ID != fromQQ || update.GroupID != fromGroup {
@@ -93,7 +100,7 @@ func EditHomo(
 			
 			
 		} else if update.Message.Text == "修改属性" {
-			aliasBot.NewMessage(fromGroup, "group").Text("好啊来啊！输入：名称 属性名 值(quit返回上一层)").Send()
+			aliasBot.NewMessage(fromGroup, "group").Text("好啊来啊！输入：名称 属性名 值(quit返回上一层) 使用 帮助 查看说明").Send()
 			for update := range updates {
 				if update.Message.From.ID != fromQQ || update.GroupID != fromGroup {
 					continue
@@ -193,11 +200,13 @@ func DisplayAllHomo(groupID int64) {
 }
 
 func Prepare4Battle(
-	updates qqbotapi.UpdatesChannel,
-	syncChannel chan struct{},
+	updates     qqbotapi.UpdatesChannel,
 	fromQQ      int64,
 	fromGroup   int64,
 ) {
-	aliasBot.NewMessage(fromGroup, "group").Text("球形中哟").Send()
-	syncChannel <- struct{}{}
+	aliasBot.NewMessage(fromGroup, "group").Text("指令：").
+		At(strconv.FormatInt(fromQQ, 10)).NewLine().
+		Text("创建房间 房间号").NewLine().
+		Text("加入房间 房间号").Send()
+	//for
 }

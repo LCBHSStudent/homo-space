@@ -3,10 +3,13 @@ package main
 import (
 	"database/sql"
 	"log"
+	"math/rand"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 	
+	"CQApp/src/common"
 	"CQApp/src/dbTransition"
 	"CQApp/src/homo"
 	"CQApp/src/lottery"
@@ -33,6 +36,8 @@ const (
 	dbName   = "homospace"
 )
 
+var CDKMap    map[string] int64
+var GroupList = [1]int64 {930378083}
 
 var ChanList  []chan qqbotapi.Update
 var ChanMutex sync.RWMutex
@@ -64,6 +69,8 @@ func main() {
 	dbTransition.Init(db)
 	lottery.Init(bot)
 	homo.Init(bot)
+	
+	Time2SendCDK()
 	
 	for update := range updates {
 		// 向下一级分发消息
@@ -149,12 +156,22 @@ func main() {
 
 func handleMsg(update qqbotapi.Update) {
 	if update.GroupID == 930378083 {
-		go func() {
-			dbTransition.AddUser(update.Message.From.ID)
-			if !dbTransition.DetectDailyLimit(update.Message.From.ID) {
-				dbTransition.IncreaseUserTicket(update.Message.From.ID, 1)
-			}
-		}()
+		if group, ok := CDKMap[update.Message.Text]; ok && group == update.GroupID {
+			go func() {
+				delete(CDKMap, update.Message.Text)
+				bot.NewMessage(update.GroupID, "group").At(strconv.FormatInt(update.Message.From.ID, 10)).
+					NewLine().Text("兑换成功！获得24张扭蛋券").Send()
+				dbTransition.AddUser(update.Message.From.ID)
+				dbTransition.IncreaseUserTicket(update.Message.From.ID, 24)
+			}()
+		} else {
+			go func() {
+				dbTransition.AddUser(update.Message.From.ID)
+				if !dbTransition.DetectDailyLimit(update.Message.From.ID) {
+					dbTransition.IncreaseUserTicket(update.Message.From.ID, 1)
+				}
+			}()
+		}
 	}
 	list := strings.Split(update.Message.Text, " ")
 	if len(list) == 2 && list[0] == "查询" {
@@ -169,6 +186,25 @@ func PrintHelpInfo(groupID int64) {
 		msg = msg.Text(strconv.Itoa(index+1)+"."+api)
 		msg = msg.NewLine()
 	}
-	msg.Text("10.查询 角色名")
-	msg.Send()
+	msg.Text("10.查询 角色名").NewLine().
+		Text("复制随机产生的CDK并发送即可获得24张转蛋券哦").Send()
+}
+
+func SendRandomCDK() {
+	cdk   := common.GetCDK()
+	group := GroupList[rand.Intn(len(GroupList))]
+	CDKMap[cdk] = group
+	bot.NewMessage(group, "group").Text("野生的CDK出现了！").NewLine().
+		Text(cdk).Send()
+}
+
+func Time2SendCDK() {
+	SendRandomCDK()
+	for {
+		rand.Seed(time.Now().UnixNano())
+		duration := time.Duration(rand.Intn(4) + 1)
+		timer := time.NewTimer(duration)
+		<- timer.C
+		SendRandomCDK()
+	}
 }

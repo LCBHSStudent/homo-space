@@ -37,7 +37,7 @@ const (
 )
 
 var CDKMap    map[string] int64
-var GroupList = [1]int64 {930378083}
+var GroupList = [1]int64 {930378083}//650423565}//930378083}
 
 var ChanList  []chan qqbotapi.Update
 var ChanMutex sync.RWMutex
@@ -70,6 +70,7 @@ func main() {
 	lottery.Init(bot)
 	homo.Init(bot)
 	
+	CDKMap = make(map[string]int64)
 	Time2SendCDK()
 	
 	for update := range updates {
@@ -202,7 +203,7 @@ func Time2SendCDK() {
 	SendRandomCDK()
 	for {
 		rand.Seed(time.Now().UnixNano())
-		duration := time.Duration(rand.Intn(4) + 1)
+		duration := time.Hour * time.Duration(rand.Intn(4) + 1)
 		timer := time.NewTimer(duration)
 		<- timer.C
 		SendRandomCDK()

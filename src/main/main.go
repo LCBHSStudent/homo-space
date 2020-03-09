@@ -37,7 +37,7 @@ const (
 )
 
 var CDKMap    map[string] int64
-var GroupList = [1]int64 {930378083}//650423565}//930378083}
+var GroupList = [1]int64 {930378083}
 
 var ChanList  []chan qqbotapi.Update
 var ChanMutex sync.RWMutex
@@ -71,7 +71,7 @@ func main() {
 	homo.Init(bot)
 	
 	CDKMap = make(map[string]int64)
-	Time2SendCDK()
+	go Time2SendCDK()
 	
 	for update := range updates {
 		// 向下一级分发消息
@@ -156,23 +156,21 @@ func main() {
 }
 
 func handleMsg(update qqbotapi.Update) {
-	if update.GroupID == 930378083 {
-		if group, ok := CDKMap[update.Message.Text]; ok && group == update.GroupID {
-			go func() {
-				delete(CDKMap, update.Message.Text)
-				bot.NewMessage(update.GroupID, "group").At(strconv.FormatInt(update.Message.From.ID, 10)).
-					NewLine().Text("兑换成功！获得24张扭蛋券").Send()
-				dbTransition.AddUser(update.Message.From.ID)
-				dbTransition.IncreaseUserTicket(update.Message.From.ID, 24)
-			}()
-		} else {
-			go func() {
-				dbTransition.AddUser(update.Message.From.ID)
-				if !dbTransition.DetectDailyLimit(update.Message.From.ID) {
-					dbTransition.IncreaseUserTicket(update.Message.From.ID, 1)
-				}
-			}()
-		}
+	if group, ok := CDKMap[update.Message.Text]; ok && group == update.GroupID {
+		go func() {
+			delete(CDKMap, update.Message.Text)
+			bot.NewMessage(update.GroupID, "group").At(strconv.FormatInt(update.Message.From.ID, 10)).
+				NewLine().Text("兑换成功！获得24张扭蛋券").Send()
+			dbTransition.AddUser(update.Message.From.ID)
+			dbTransition.IncreaseUserTicket(update.Message.From.ID, 24)
+		}()
+	} else {
+		go func() {
+			dbTransition.AddUser(update.Message.From.ID)
+			if !dbTransition.DetectDailyLimit(update.Message.From.ID) {
+				dbTransition.IncreaseUserTicket(update.Message.From.ID, 1)
+			}
+		}()
 	}
 	list := strings.Split(update.Message.Text, " ")
 	if len(list) == 2 && list[0] == "查询" {
@@ -203,7 +201,7 @@ func Time2SendCDK() {
 	SendRandomCDK()
 	for {
 		rand.Seed(time.Now().UnixNano())
-		duration := time.Hour * time.Duration(rand.Intn(4) + 1)
+		duration := time.Hour * time.Duration(rand.Intn(3) + 1) + time.Minute * time.Duration(rand.Intn(60))
 		timer := time.NewTimer(duration)
 		<- timer.C
 		SendRandomCDK()

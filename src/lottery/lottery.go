@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"math/rand"
 	"runtime"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
-	
+
 	"CQApp/src/dbTransition"
 	"github.com/catsworld/qq-bot-api"
 )
@@ -24,11 +26,18 @@ var createUserTable = `
 `
 
 type Homo = dbTransition.Homo
-
-var prob  = [3]int{1, 10, 100}
+//
+var prob  = [4]int{1, 10, 96, 100}
+//
 var RareN   []Homo
 var RareSR  []Homo
 var RareUR  []Homo
+
+var UpItem = Homo{
+	ID:   36,
+	Rare: "[UR★★★★★]",
+	Name: "万达广场大发财大富贵",
+}
 
 func Init(bot *qqbotapi.BotAPI) {
 	if bot == nil {
@@ -84,6 +93,10 @@ func draw(id int64, msg *qqbotapi.FlatSender) *qqbotapi.FlatSender {
 		msg  = msg.Text("[N★]" + RareN[item].Name)
 		dbTransition.NewHomoGet(id, RareN[item].ID, RareN[item].Name)
 		break //N
+	case 3:
+		msg  = msg.Text(UpItem.Rare + UpItem.Name)
+		dbTransition.NewHomoGet(id, UpItem.ID, UpItem.Name)
+		break
 	default:
 		break
 	}
@@ -92,7 +105,7 @@ func draw(id int64, msg *qqbotapi.FlatSender) *qqbotapi.FlatSender {
 
 func SingleDraw(update qqbotapi.Update) {
 	id := update.Message.From.ID
-	dbTransition.AddUser(update.Message.From.ID)
+	dbTransition.AddUser(update.Message.From.ID, update.GroupID)
 	
 	msg := aliasBot.NewMessage(update.GroupID, "group").At(strconv.FormatInt(id, 10))
 	if len(RareUR) == 0 || len(RareN) == 0 || len(RareSR) == 0 {
@@ -115,7 +128,7 @@ func SingleDraw(update qqbotapi.Update) {
 
 func MultiDraw(update qqbotapi.Update) {
 	id := update.Message.From.ID
-	dbTransition.AddUser(update.Message.From.ID)
+	dbTransition.AddUser(update.Message.From.ID, update.GroupID)
 	
 	msg := aliasBot.NewMessage(update.GroupID, "group").At(strconv.FormatInt(id, 10))
 	
@@ -141,7 +154,7 @@ func MultiDraw(update qqbotapi.Update) {
 }
 
 func ShowTicketCnt(id int64, group int64) {
-	dbTransition.AddUser(id)
+	dbTransition.AddUser(id, group)
 	cnt := dbTransition.GetUserTicket(id)
 	if cnt != -810 {
 		aliasBot.NewMessage(group, "group").
@@ -179,4 +192,60 @@ func ShowDrawPool(groupID int64) {
 		msg = msg.Text("["+homo.Name+"], ")
 	}
 	msg.Send()
+}
+
+type Member = dbTransition.Member
+type Members []Member
+
+func (m Members) Len() int {
+	return len(m)
+}
+func (m Members) Swap(i, j int) {
+	m[i].Id, m[j].Id = m[j].Id, m[i].Id
+	m[i].ColRate, m[j].ColRate = m[j].ColRate, m[i].ColRate
+}
+// rise ordered
+func (m Members) Less(i, j int) bool {
+	return m[i].ColRate > m[j].ColRate
+}
+
+func PrintCollectionRank(group int64) {
+
+	users := make(Members, 0, 45)
+
+	con := dbTransition.GetConn()
+	rows, err := con.Query("SELECT ID FROM USER WHERE FROM_GROUP=?", group)
+	if err != nil {
+		aliasBot.NewMessage(group, "group").
+			Text(err.Error()).Send()
+	} else {
+		var id int64
+		for rows.Next() {
+			_ = rows.Scan(&id)
+			users = append(users, Member{Id: id})
+		}
+		if len(users) == 0 {
+			aliasBot.NewMessage(group, "group").Text("本群内还无人登记哦").Send()
+		}
+		dbTransition.UpdateMemberInfo((*[]dbTransition.Member)(&users))
+		sort.Sort(users)
+
+		msg := aliasBot.NewMessage(group, "group").Text("")
+		homoCnt := float64(dbTransition.GetHomoCount())
+
+		for index, user := range users {
+			info, err := aliasBot.GetGroupMemberInfo(group, user.Id, false)
+			if err != nil {
+				aliasBot.NewMessage(group, "group").
+					Text(err.Error()).Send()
+			} else {
+				colRate := strconv.FormatFloat(float64(user.ColRate)/homoCnt*100, 'f', 2, 64) + "%"
+				msg = msg.Text(strings.Join([]string{"No.", strconv.Itoa(index+1), "【", info.Name(), "】: ", colRate}, ""))
+				if index != len(users) - 1 {
+					msg = msg.NewLine()
+				}
+			}
+		}
+		msg.Send()
+	}
 }

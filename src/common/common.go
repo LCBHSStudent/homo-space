@@ -73,3 +73,15 @@ func getCurFormatTime() string {
 	}
 	return curTime
 }
+
+func JudgeWeather2LvUp(exp int, level int) bool {
+	return true
+}
+
+func merge() {
+
+}
+
+func MergeSort(slice []int64, cmp func(int64, int64)) {
+
+}

@@ -23,9 +23,10 @@ func Init(db *sql.DB) {
 	CreateTableIfNotExist("USER",
 		`
 (
-	ID      BIGINT  NOT NULL    PRIMARY KEY,
-	TICKET  INT     NOT NULL,
-	DAILY_LIMIT INT NOT NULL    DEFAULT 0
+	ID      	BIGINT  NOT NULL    PRIMARY KEY,
+	TICKET  	INT     NOT NULL,
+	DAILY_LIMIT INT NOT NULL    	DEFAULT 0,
+	FROM_GROUP  BIGINT  NOT NULL    DEFAULT -1
 );
 	`)
 	CreateTableIfNotExist("HOMO",
@@ -92,14 +93,14 @@ CREATE TABLE IF NOT EXISTS ` + table + tableFormat
 	}
 }
 
-func AddUser(id int64) {
+func AddUser(id int64, group int64) {
 	var count int64
 	err := aliasDB.QueryRow("SELECT count(*) FROM USER WHERE ID=?", id).Scan(&count)
 	if err != nil {
 		log.Fatal(err)
 	}
 	if count == 0 {
-		_, err := aliasDB.Exec("INSERT INTO USER(ID,TICKET,DAILY_LIMIT) VALUES (?,?,?)", id, 90, 0)
+		_, err := aliasDB.Exec("INSERT INTO USER(ID,TICKET,DAILY_LIMIT,FROM_GROUP) VALUES (?,?,?,?)", id, 90, 0, group)
 		if err != nil {
 			panic(err)
 		}
@@ -293,6 +294,43 @@ func DisplaySingleHomoInfo(name string) string {
 		"\n是否概率UP中: ", strconv.FormatBool(UP),
 	}, "")
 	return msg
+}
+
+func UpdateFromGroup(id int64, from int64) error {
+	var formerGroup int64
+	aliasDB.QueryRow("SELECT FROM_GROUP FROM USER WHERE ID=?", id).Scan(&formerGroup)
+	_, err := aliasDB.Exec("UPDATE USER SET FROM_GROUP=? WHERE ID=?", from, id)
+	if err != nil {
+		return err
+	}
+	if formerGroup == 0 {
+		IncreaseUserTicket(id, 45)
+	}
+	return nil
+}
+
+type Member struct {
+	Id			int64
+	NickName 	string
+	ColRate		int
+}
+
+func UpdateMemberInfo(member *[]Member) {
+	for i := 0; i < len(*member); i++ {
+		err := aliasDB.QueryRow("SELECT count(*) FROM `" + strconv.FormatInt((*member)[i].Id, 10) +"`").
+			Scan(&(*member)[i].ColRate)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+}
+
+func GetHomoCount() (res int) {
+	err := aliasDB.QueryRow("SELECT count(*) FROM HOMO").Scan(&res)
+	if err != nil {
+		log.Println(err)
+	}
+	return
 }
 
 func GetConn() *sql.DB {

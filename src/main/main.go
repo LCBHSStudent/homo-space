@@ -19,8 +19,8 @@ import (
 
 var bot  *qqbotapi.BotAPI
 var db   *sql.DB
-var keyWords = [9]string {
-	"转蛋单抽", "转蛋十连", "转蛋奖池", "HOMOSPACE", "编辑HOMO", "我的转蛋券", "HOMO图鉴", "准备对战", "Document",
+var keyWords = [11]string {
+	"转蛋单抽", "转蛋十连", "转蛋奖池", "HOMOSPACE", "编辑HOMO", "我的转蛋券", "HOMO图鉴", "准备对战", "收集排行", "群登记", "Document",
 }
 
 
@@ -146,6 +146,20 @@ func main() {
 			}()
 			break
 		case 8:
+			lottery.PrintCollectionRank(update.GroupID)
+			break
+		case 9:
+			err := dbTransition.UpdateFromGroup(update.Message.From.ID, update.GroupID)
+			if err != nil {
+				bot.NewMessage(update.GroupID, "group").
+					At(string(update.Message.From.ID)).NewLine().
+					Text(err.Error()).Send()
+			} else {
+				bot.NewMessage(update.GroupID, "group").
+					At(strconv.FormatInt(update.Message.From.ID, 10)).NewLine().
+					Text("更新成功力!已登记到本群").Send()
+			}
+		case 10:
 			PrintHelpInfo(update.GroupID)
 			break
 		default:
@@ -160,13 +174,13 @@ func handleMsg(update qqbotapi.Update) {
 		go func() {
 			delete(CDKMap, update.Message.Text)
 			bot.NewMessage(update.GroupID, "group").At(strconv.FormatInt(update.Message.From.ID, 10)).
-				NewLine().Text("兑换成功！获得24张扭蛋券").Send()
-			dbTransition.AddUser(update.Message.From.ID)
+				NewLine().Text("兑换成功！获得24张转蛋券").Send()
+			dbTransition.AddUser(update.Message.From.ID, update.GroupID)
 			dbTransition.IncreaseUserTicket(update.Message.From.ID, 24)
 		}()
 	} else {
 		go func() {
-			dbTransition.AddUser(update.Message.From.ID)
+			dbTransition.AddUser(update.Message.From.ID, update.GroupID)
 			if !dbTransition.DetectDailyLimit(update.Message.From.ID) {
 				dbTransition.IncreaseUserTicket(update.Message.From.ID, 1)
 			}
@@ -185,7 +199,7 @@ func PrintHelpInfo(groupID int64) {
 		msg = msg.Text(strconv.Itoa(index+1)+"."+api)
 		msg = msg.NewLine()
 	}
-	msg.Text("10.查询 角色名").NewLine().
+	msg.Text("12.查询 角色名").NewLine().
 		Text("复制随机产生的CDK并发送即可获得24张转蛋券哦").Send()
 }
 
@@ -198,10 +212,10 @@ func SendRandomCDK() {
 }
 
 func Time2SendCDK() {
-	SendRandomCDK()
 	for {
 		rand.Seed(time.Now().UnixNano())
-		duration := time.Hour * time.Duration(rand.Intn(3) + 1) + time.Minute * time.Duration(rand.Intn(60))
+		duration := time.Hour * time.Duration(rand.Intn(2) + 1) + time.Minute * time.Duration(rand.Intn(40) + 20)
+			//time.Minute * time.Duration(rand.Intn(10) + 10)
 		timer := time.NewTimer(duration)
 		<- timer.C
 		SendRandomCDK()

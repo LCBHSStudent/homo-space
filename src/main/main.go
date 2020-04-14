@@ -48,7 +48,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	bot.Debug = true
+	bot.Debug = false
 	
 	conf := qqbotapi.NewUpdate(0)
 	conf.PreloadUserInfo = true

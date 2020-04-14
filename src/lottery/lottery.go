@@ -2,6 +2,7 @@ package lottery
 
 import (
 	"fmt"
+	qqbotapi "github.com/catsworld/qq-bot-api"
 	"math/rand"
 	"runtime"
 	"sort"
@@ -10,7 +11,6 @@ import (
 	"time"
 
 	"CQApp/src/dbTransition"
-	"github.com/catsworld/qq-bot-api"
 )
 
 var aliasBot *qqbotapi.BotAPI
@@ -27,16 +27,16 @@ var createUserTable = `
 
 type Homo = dbTransition.Homo
 //
-var prob  = [4]int{1, 10, 96, 100}
+var prob  = [4]int{15, 100, 1000, 1000}
 //
 var RareN   []Homo
 var RareSR  []Homo
 var RareUR  []Homo
 
 var UpItem = Homo{
-	ID:   36,
+	ID:   35,
 	Rare: "[UR★★★★★]",
-	Name: "万达广场大发财大富贵",
+	Name: "柏油贵公子(联通法师)",
 }
 
 func Init(bot *qqbotapi.BotAPI) {
@@ -68,7 +68,7 @@ func draw(id int64, msg *qqbotapi.FlatSender) *qqbotapi.FlatSender {
 	
 	msg = msg.NewLine()
 	
-	value   := rand.Intn(100) + 1
+	value   := rand.Intn(1000) + 1
 	rank    := 0
 	for i := 0; i < len(prob); i++ {
 		if value <= prob[i] {

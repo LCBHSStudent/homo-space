@@ -46,7 +46,7 @@ func main() {
 	var err error
 	bot, err = qqbotapi.NewBotAPI("", "ws://"+Host+":6700", "CQHTTP_SECRET")
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	bot.Debug = false
 	
@@ -214,7 +214,7 @@ func SendRandomCDK() {
 func Time2SendCDK() {
 	for {
 		rand.Seed(time.Now().UnixNano())
-		duration := time.Hour * time.Duration(rand.Intn(2) + 1) + time.Minute * time.Duration(rand.Intn(40) + 20)
+		duration := time.Hour * time.Duration(rand.Intn(2)) + time.Minute * time.Duration(rand.Intn(40) + 20)
 			//time.Minute * time.Duration(rand.Intn(10) + 10)
 		timer := time.NewTimer(duration)
 		<- timer.C

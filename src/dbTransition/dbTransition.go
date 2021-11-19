@@ -89,7 +89,7 @@ func CreateTableIfNotExist(table string, tableFormat string) {
 CREATE TABLE IF NOT EXISTS ` + table + tableFormat
 	_, err := aliasDB.Exec(create)
 	if err != nil {
-		panic(err)
+		log.Println(err)
 	}
 }
 
@@ -97,12 +97,12 @@ func AddUser(id int64, group int64) {
 	var count int64
 	err := aliasDB.QueryRow("SELECT count(*) FROM USER WHERE ID=?", id).Scan(&count)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	if count == 0 {
 		_, err := aliasDB.Exec("INSERT INTO USER(ID,TICKET,DAILY_LIMIT,FROM_GROUP) VALUES (?,?,?,?)", id, 90, 0, group)
 		if err != nil {
-			panic(err)
+			log.Println(err)
 		}
 	}
 }
@@ -116,18 +116,18 @@ type Homo struct {
 func GetHomoList(list *[]Homo, rare string) () {
 	rows, err := aliasDB.Query("SELECT ID,RARE,NAME FROM HOMO WHERE RARE = ? AND ACQUIRABLE = TRUE", rare)
 	if err != nil {
-		panic(err)
+		log.Println(err)
 	}
 	for rows.Next() {
 		pkm := Homo{}
 		if err := rows.Scan(&pkm.ID, &pkm.Rare, &pkm.Name); err != nil {
-			log.Fatal(err)
+			log.Println(err)
 		}
 		*list = append(*list, pkm)
 		//fmt.Println("Load HOMO message:", pkm.ID, pkm.Rare, pkm.Name)
 	}
 	if err := rows.Err(); err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 }
 
@@ -144,7 +144,7 @@ func DetectDailyLimit(id int64) bool {
 	var daily int64
 	err := aliasDB.QueryRow("SELECT DAILY_LIMIT FROM USER WHERE ID=?", id).Scan(&daily)
 	if err != nil {
-		panic(err)
+		log.Println(err)
 	}
 	if daily < 25 {
 		_, _ = aliasDB.Exec("UPDATE USER SET DAILY_LIMIT=? WHERE ID=?", daily+1, id)
@@ -158,11 +158,11 @@ func IncreaseUserTicket(id int64, count int64) {
 	var ticket int64
 	err := aliasDB.QueryRow("SELECT TICKET FROM USER WHERE ID=?", id).Scan(&ticket)
 	if err != nil {
-		panic(err)
+		log.Println(err)
 	}
 	_, err = aliasDB.Exec("UPDATE USER SET TICKET=? WHERE ID=?", ticket+count, id)
 	if err != nil {
-		panic(err)
+		log.Println(err)
 	}
 }
 

@@ -37,6 +37,9 @@ func EditHomo(
 		Text("可以开始编辑HOMO信息了,使用 帮助 查看说明").Send()
 	
 	for update := range updates {
+		if update.Message == nil || update.MessageType != "group" {
+			continue
+		}
 		if update.Message.From.ID != fromQQ || update.GroupID != fromGroup {
 			continue
 		}
@@ -49,6 +52,9 @@ func EditHomo(
 		} else if update.Message.Text == "删除HOMO" {
 			aliasBot.NewMessage(fromGroup, "group").Text("好啊来啊！输入：名称(quit返回上一层)").Send()
 			for update := range updates {
+				if update.Message == nil || update.MessageType != "group" {
+					continue
+				}
 				if update.Message.From.ID != fromQQ || update.GroupID != fromGroup {
 					continue
 				}
@@ -71,6 +77,9 @@ func EditHomo(
 		} else if update.Message.Text == "添加HOMO" {
 			aliasBot.NewMessage(fromGroup, "group").Text("好啊来啊！输入：名称 稀有度(N,SR,UR,quit返回上一层)").Send()
 			for update := range updates {
+				if update.Message == nil || update.MessageType != "group" {
+					continue
+				}
 				if update.Message.From.ID != fromQQ || update.GroupID != fromGroup {
 					continue
 				}
@@ -102,6 +111,9 @@ func EditHomo(
 		} else if update.Message.Text == "修改属性" {
 			aliasBot.NewMessage(fromGroup, "group").Text("好啊来啊！输入：名称 属性名 值(quit返回上一层) 使用 帮助 查看说明").Send()
 			for update := range updates {
+				if update.Message == nil || update.MessageType != "group" {
+					continue
+				}
 				if update.Message.From.ID != fromQQ || update.GroupID != fromGroup {
 					continue
 				}

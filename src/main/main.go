@@ -74,15 +74,15 @@ func main() {
 	go Time2SendCDK()
 	
 	for update := range updates {
-		// 向下一级分发消息
-		for _, ch := range ChanList {
-			ch <- update
-		}
 		// 判断消息属性
 		if update.Message == nil || update.MessageType != "group" {
 			continue
 		}
-		log.Println(update.Message)
+		// 向下一级分发消息
+		for _, ch := range ChanList {
+			ch <- update
+		}
+		// log.Println(update.Message)
 		// detect is const operation
 		var flag int = -1
 		for index, str := range keyWords {

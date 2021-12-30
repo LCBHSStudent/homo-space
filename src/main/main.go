@@ -29,7 +29,7 @@ const Host = "127.0.0.1"
 
 const (
 	userName = "root"
-	password = "password"
+	password = "^52]pt*xz+g^03_C#YHb"
 	//ip       = "39.106.219.180"
 	ip       = "127.0.0.1"
 	port     = "3306"

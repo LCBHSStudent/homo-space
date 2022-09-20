@@ -7,19 +7,19 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	
+
 	"homo-space/src/common"
 )
 
 var (
-	aliasDB     *sql.DB
+	aliasDB *sql.DB
 )
 
 func Init(db *sql.DB) {
 	if db == nil {
 		panic("failed to bind a nil value")
 	}
-	aliasDB  = db
+	aliasDB = db
 	CreateTableIfNotExist("USER",
 		`
 (
@@ -34,7 +34,7 @@ func Init(db *sql.DB) {
 (
 	ID          BIGINT           NOT NULL    PRIMARY KEY   AUTO_INCREMENT,
 	NAME        VARCHAR(128)     NOT NULL,
-	DESCRIPTION VARCHAR(255)     DEFAULT `+"'妹有描述desu'," +`
+	DESCRIPTION VARCHAR(255)     DEFAULT `+"'妹有描述desu',"+`
 	RARE        VARCHAR(15)      NOT NULL,
 	MAX_LEVEL   INT              DEFAULT 114,
 
@@ -69,9 +69,9 @@ func Init(db *sql.DB) {
 }
 
 func checkTableExist(table string) bool {
-	query  := "SELECT nsp FROM " + table
+	query := "SELECT nsp FROM " + table
 	_, err := aliasDB.Query(query)
-	if  err != nil &&
+	if err != nil &&
 		err.Error() == "Error 1054: Unknown column 'nsp' in 'field list'" {
 		return true
 	} else {
@@ -80,11 +80,11 @@ func checkTableExist(table string) bool {
 }
 
 func CreateTableIfNotExist(table string, tableFormat string) {
-	
+
 	if checkTableExist(table) {
 		return
 	}
-	
+
 	create := `
 CREATE TABLE IF NOT EXISTS ` + table + tableFormat
 	_, err := aliasDB.Exec(create)
@@ -108,12 +108,12 @@ func AddUser(id int64, group int64) {
 }
 
 type Homo struct {
-	ID      int
-	Rare    string
-	Name    string
+	ID   int
+	Rare string
+	Name string
 }
 
-func GetHomoList(list *[]Homo, rare string) () {
+func GetHomoList(list *[]Homo, rare string) {
 	rows, err := aliasDB.Query("SELECT ID,RARE,NAME FROM HOMO WHERE RARE = ? AND ACQUIRABLE = TRUE", rare)
 	if err != nil {
 		log.Println(err)
@@ -169,13 +169,13 @@ func IncreaseUserTicket(id int64, count int64) {
 func NewHomoGet(id int64, HomoID int, HomoName string) {
 	rand.Seed(time.Now().UnixNano())
 	var count int64
-	tableId := strconv.FormatInt(id,10)
-	cntQuery :=  "SELECT count(*) FROM `" + tableId + "` WHERE HOMO_ID=?"
+	tableId := strconv.FormatInt(id, 10)
+	cntQuery := "SELECT count(*) FROM `" + tableId + "` WHERE HOMO_ID=?"
 	err := aliasDB.QueryRow(cntQuery, HomoID).Scan(&count)
 	if count > 0 {
 		var potentiality int64
-		var quality      int64
-		query :=  "SELECT HOMO_POTENTIALITY,HOMO_QUALITY FROM `" + tableId + "` WHERE HOMO_ID=?"
+		var quality int64
+		query := "SELECT HOMO_POTENTIALITY,HOMO_QUALITY FROM `" + tableId + "` WHERE HOMO_ID=?"
 		err = aliasDB.QueryRow(query, HomoID).Scan(&potentiality, &quality)
 		if err != nil {
 			log.Println(err)
@@ -187,7 +187,7 @@ func NewHomoGet(id int64, HomoID int, HomoName string) {
 				log.Println(err)
 			}
 		}
-		newQuality := rand.Intn(100)+1
+		newQuality := rand.Intn(100) + 1
 		if newQuality > int(quality) {
 			_, err = aliasDB.Exec("UPDATE `"+tableId+
 				"` SET HOMO_QUALITY=? WHERE HOMO_ID=?", newQuality, HomoID)
@@ -196,8 +196,8 @@ func NewHomoGet(id int64, HomoID int, HomoName string) {
 			}
 		}
 	} else {
-		_, err = aliasDB.Exec("INSERT INTO `" + tableId +
-			"`(HOMO_ID,HOMO_NAME,HOMO_LEVEL,HOMO_POTENTIALITY,HOMO_EXP,HOMO_QUALITY)" +
+		_, err = aliasDB.Exec("INSERT INTO `"+tableId+
+			"`(HOMO_ID,HOMO_NAME,HOMO_LEVEL,HOMO_POTENTIALITY,HOMO_EXP,HOMO_QUALITY)"+
 			"VALUES(?,?,?,?,?,?)", HomoID, HomoName,
 			1, 0, 0, rand.Intn(100)+1,
 		)
@@ -225,13 +225,13 @@ func TimeToUpdateDailyLimit() {
 		)
 		t := time.NewTimer(next.Sub(now))
 		<-t.C
-		
+
 		UpdateDailyLimit()
 	}
 }
 
 func GetOnesAsset(id int64) (homo []string) {
-	tableId := strconv.FormatInt(id,10)
+	tableId := strconv.FormatInt(id, 10)
 	homo = make([]string, 0)
 	rows, err := aliasDB.Query(
 		"SELECT * FROM `" + tableId + "`",
@@ -239,18 +239,18 @@ func GetOnesAsset(id int64) (homo []string) {
 	if err != nil {
 		log.Println(err)
 	} else {
-		var ID           int
-		var Name         string
-		var LEVEL        int
+		var ID int
+		var Name string
+		var LEVEL int
 		var Potentiality int
-		var Exp          int
-		var Quality      int
+		var Exp int
+		var Quality int
 		for rows.Next() {
 			err := rows.Scan(&ID, &Name, &LEVEL, &Potentiality, &Exp, &Quality)
 			if err != nil {
 				log.Println(err)
 			} else {
-				data := "No." +strconv.Itoa(ID) + "\n名称: [" + Name + "] 等级: [" + strconv.Itoa(LEVEL) +
+				data := "No." + strconv.Itoa(ID) + "\n名称: [" + Name + "] 等级: [" + strconv.Itoa(LEVEL) +
 					"] 突破等级: [" + strconv.Itoa(Potentiality) + "] 经验值: [" +
 					strconv.Itoa(Exp) + "] 潜能: [" + strconv.Itoa(Quality) + "]"
 				homo = append(homo, data)
@@ -271,15 +271,15 @@ func DisplaySingleHomoInfo(name string) string {
 	err := aliasDB.QueryRow(
 		"SELECT * FROM HOMO WHERE NAME=?",
 		name).Scan(&ID, &Name, &DESCRIPTION, &RARE, &MaxLevel,
-			&InitialHP, &InitialATN, &InitialINT, &InitialDEF, &InitialRES, &InitialSPD, &InitialLUK,
-			&GrowthHP, &GrowthATN, &GrowthINT, &GrowthDEF, &GrowthRES, &GrowthSPD, &GrowthLUK,
-			&ActiveSkills[0], &ActiveSkills[1], &ActiveSkills[2], &ActiveSkills[3],
-			&PassiveSkills[0], &PassiveSkills[1], &Acquirable, &UP)
+		&InitialHP, &InitialATN, &InitialINT, &InitialDEF, &InitialRES, &InitialSPD, &InitialLUK,
+		&GrowthHP, &GrowthATN, &GrowthINT, &GrowthDEF, &GrowthRES, &GrowthSPD, &GrowthLUK,
+		&ActiveSkills[0], &ActiveSkills[1], &ActiveSkills[2], &ActiveSkills[3],
+		&PassiveSkills[0], &PassiveSkills[1], &Acquirable, &UP)
 	if err != nil {
 		return err.Error()
 	}
 	msg := strings.Join([]string{
-		"[No.", strconv.Itoa(ID), "] " , Name, "\n",
+		"[No.", strconv.Itoa(ID), "] ", Name, "\n",
 		"稀有度: ", RARE, "\n【", DESCRIPTION, "】 最大等级: ", strconv.Itoa(MaxLevel),
 		"\n初始属性: \n", "HP: ", strconv.Itoa(InitialHP), "  物理攻击: ", strconv.Itoa(InitialATN),
 		"\n魔法攻击: ", strconv.Itoa(InitialINT), "  物理防御: ", strconv.Itoa(InitialDEF),
@@ -287,7 +287,7 @@ func DisplaySingleHomoInfo(name string) string {
 		"\n成长属性: \n", "物理攻击: ", strconv.Itoa(GrowthATN),
 		"\n魔法攻击: ", strconv.Itoa(GrowthINT), "  物理防御: ", strconv.Itoa(GrowthDEF),
 		"\n魔法防御: ", strconv.Itoa(GrowthRES), "  速度: ", strconv.Itoa(GrowthSPD), "  幸运: ", strconv.Itoa(GrowthLUK),
-		"\n主动技能：", "[", common.SkillList[0], "], " , "[", common.SkillList[0], "], ",
+		"\n主动技能：", "[", common.SkillList[0], "], ", "[", common.SkillList[0], "], ",
 		"[", common.SkillList[0], "], ", "[", common.SkillList[0], "]",
 		"\n被动技能：", "[", common.SkillList[0], "], ", "[", common.SkillList[0], "]",
 		"\n可否转蛋获得: ", strconv.FormatBool(Acquirable),
@@ -310,14 +310,14 @@ func UpdateFromGroup(id int64, from int64) error {
 }
 
 type Member struct {
-	Id			int64
-	NickName 	string
-	ColRate		int
+	Id       int64
+	NickName string
+	ColRate  int
 }
 
 func UpdateMemberInfo(member *[]Member) {
 	for i := 0; i < len(*member); i++ {
-		err := aliasDB.QueryRow("SELECT count(*) FROM `" + strconv.FormatInt((*member)[i].Id, 10) +"`").
+		err := aliasDB.QueryRow("SELECT count(*) FROM `" + strconv.FormatInt((*member)[i].Id, 10) + "`").
 			Scan(&(*member)[i].ColRate)
 		if err != nil {
 			log.Println(err)

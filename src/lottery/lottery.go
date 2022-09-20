@@ -2,13 +2,14 @@ package lottery
 
 import (
 	"fmt"
-	qqbotapi "github.com/catsworld/qq-bot-api"
 	"math/rand"
 	"runtime"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	qqbotapi "github.com/catsworld/qq-bot-api"
 
 	"homo-space/src/dbTransition"
 )
@@ -26,12 +27,14 @@ var createUserTable = `
 `
 
 type Homo = dbTransition.Homo
+
 //
-var prob  = [4]int{15, 100, 1000, 1000}
+var prob = [4]int{15, 100, 1000, 1000}
+
 //
-var RareN   []Homo
-var RareSR  []Homo
-var RareUR  []Homo
+var RareN []Homo
+var RareSR []Homo
+var RareUR []Homo
 
 var UpItem = Homo{
 	ID:   35,
@@ -48,16 +51,16 @@ func Init(bot *qqbotapi.BotAPI) {
 }
 
 func GetHomoList() {
-	
-	RareN  = make([]Homo, 0)
+
+	RareN = make([]Homo, 0)
 	RareSR = make([]Homo, 0)
 	RareUR = make([]Homo, 0)
 	runtime.GC()
-	
-	dbTransition.GetHomoList(&RareN,  "N")
+
+	dbTransition.GetHomoList(&RareN, "N")
 	dbTransition.GetHomoList(&RareSR, "SR")
 	dbTransition.GetHomoList(&RareUR, "UR")
-	
+
 	fmt.Println(RareN)
 	fmt.Println(RareSR)
 	fmt.Println(RareUR)
@@ -65,11 +68,11 @@ func GetHomoList() {
 
 func draw(id int64, msg *qqbotapi.FlatSender) *qqbotapi.FlatSender {
 	rand.Seed(time.Now().UnixNano())
-	
+
 	msg = msg.NewLine()
-	
-	value   := rand.Intn(1000) + 1
-	rank    := 0
+
+	value := rand.Intn(1000) + 1
+	rank := 0
 	for i := 0; i < len(prob); i++ {
 		if value <= prob[i] {
 			break
@@ -80,21 +83,21 @@ func draw(id int64, msg *qqbotapi.FlatSender) *qqbotapi.FlatSender {
 	switch rank {
 	case 0:
 		item = rand.Intn(len(RareUR))
-		msg  = msg.Text("[UR★★★★★]" + RareUR[item].Name)
+		msg = msg.Text("[UR★★★★★]" + RareUR[item].Name)
 		dbTransition.NewHomoGet(id, RareUR[item].ID, RareUR[item].Name)
 		break //UR
 	case 1:
 		item = rand.Intn(len(RareSR))
-		msg  = msg.Text("[SR★★★]" + RareSR[item].Name)
+		msg = msg.Text("[SR★★★]" + RareSR[item].Name)
 		dbTransition.NewHomoGet(id, RareSR[item].ID, RareSR[item].Name)
 		break //SR
 	case 2:
 		item = rand.Intn(len(RareN))
-		msg  = msg.Text("[N★]" + RareN[item].Name)
+		msg = msg.Text("[N★]" + RareN[item].Name)
 		dbTransition.NewHomoGet(id, RareN[item].ID, RareN[item].Name)
 		break //N
 	case 3:
-		msg  = msg.Text(UpItem.Rare + UpItem.Name)
+		msg = msg.Text(UpItem.Rare + UpItem.Name)
 		dbTransition.NewHomoGet(id, UpItem.ID, UpItem.Name)
 		break
 	default:
@@ -106,47 +109,45 @@ func draw(id int64, msg *qqbotapi.FlatSender) *qqbotapi.FlatSender {
 func SingleDraw(update qqbotapi.Update) {
 	id := update.Message.From.ID
 	dbTransition.AddUser(update.Message.From.ID, update.GroupID)
-	
+
 	msg := aliasBot.NewMessage(update.GroupID, "group").At(strconv.FormatInt(id, 10))
 	if len(RareUR) == 0 || len(RareN) == 0 || len(RareSR) == 0 {
-		msg.Text("请先补充蛋池").Send()
+		msg.Text("请先补充蛋池（稀有度为R，SR，UR 的HOMO都必须至少有一个）").Send()
 		return
 	}
-	
+
 	if dbTransition.GetUserTicket(id) < 5 {
 		msg.NewLine().Text("恁的转蛋券尚不足5!").Send()
 		return
 	}
 	dbTransition.IncreaseUserTicket(id, -5)
-	
-	
+
 	dbTransition.CreateTableIfNotExist(
 		"`"+strconv.FormatInt(update.Message.From.ID, 10)+"`", createUserTable)
-	
+
 	draw(id, msg).Send()
 }
 
 func MultiDraw(update qqbotapi.Update) {
 	id := update.Message.From.ID
 	dbTransition.AddUser(update.Message.From.ID, update.GroupID)
-	
+
 	msg := aliasBot.NewMessage(update.GroupID, "group").At(strconv.FormatInt(id, 10))
-	
+
 	if len(RareUR) == 0 || len(RareN) == 0 || len(RareSR) == 0 {
-		msg.Text("请先补充蛋池").Send()
+		msg.Text("请先补充蛋池（稀有度为R，SR，UR 的HOMO都必须至少有一个）").Send()
 		return
 	}
-	
+
 	if dbTransition.GetUserTicket(id) < 45 {
 		msg.NewLine().Text("恁的转蛋券尚不足45!").Send()
 		return
 	}
 	dbTransition.IncreaseUserTicket(id, -45)
-	
-	
+
 	dbTransition.CreateTableIfNotExist(
 		"`"+strconv.FormatInt(update.Message.From.ID, 10)+"`", createUserTable)
-	
+
 	for i := 0; i < 10; i++ {
 		msg = draw(id, msg)
 	}
@@ -175,21 +176,21 @@ func ShowDrawPool(groupID int64) {
 	msg := aliasBot.NewMessage(groupID, "group").Text("")
 	msg = msg.Text("[N★]: ")
 	for _, homo := range RareN {
-		msg = msg.Text("["+homo.Name+"], ")
+		msg = msg.Text("[" + homo.Name + "], ")
 	}
 	msg = msg.NewLine()
 	msg = msg.NewLine()
-	
+
 	msg = msg.Text("[SR★★★]: ")
 	for _, homo := range RareSR {
-		msg = msg.Text("["+homo.Name+"], ")
+		msg = msg.Text("[" + homo.Name + "], ")
 	}
 	msg = msg.NewLine()
 	msg = msg.NewLine()
-	
+
 	msg = msg.Text("[UR★★★★★]: ")
 	for _, homo := range RareUR {
-		msg = msg.Text("["+homo.Name+"], ")
+		msg = msg.Text("[" + homo.Name + "], ")
 	}
 	msg.Send()
 }
@@ -204,6 +205,7 @@ func (m Members) Swap(i, j int) {
 	m[i].Id, m[j].Id = m[j].Id, m[i].Id
 	m[i].ColRate, m[j].ColRate = m[j].ColRate, m[i].ColRate
 }
+
 // rise ordered
 func (m Members) Less(i, j int) bool {
 	return m[i].ColRate > m[j].ColRate
@@ -240,8 +242,8 @@ func PrintCollectionRank(group int64) {
 					Text(err.Error()).Send()
 			} else {
 				colRate := strconv.FormatFloat(float64(user.ColRate)/homoCnt*100, 'f', 2, 64) + "%"
-				msg = msg.Text(strings.Join([]string{"No.", strconv.Itoa(index+1), "【", info.Name(), "】: ", colRate}, ""))
-				if index != len(users) - 1 {
+				msg = msg.Text(strings.Join([]string{"No.", strconv.Itoa(index + 1), "【", info.Name(), "】: ", colRate}, ""))
+				if index != len(users)-1 {
 					msg = msg.NewLine()
 				}
 			}

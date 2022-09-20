@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"CQApp/src/dbTransition"
+	"homo-space/src/dbTransition"
 )
 
 var aliasBot *qqbotapi.BotAPI

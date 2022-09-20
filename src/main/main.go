@@ -8,71 +8,86 @@ import (
 	"strings"
 	"sync"
 	"time"
-	
-	"CQApp/src/common"
-	"CQApp/src/dbTransition"
-	"CQApp/src/homo"
-	"CQApp/src/lottery"
-	"github.com/catsworld/qq-bot-api"
+
+	"homo-space/src/common"
+	"homo-space/src/dbTransition"
+	"homo-space/src/homo"
+	"homo-space/src/lottery"
+	"homo-space/util"
+
+	qqbotapi "github.com/catsworld/qq-bot-api"
 	_ "github.com/go-sql-driver/mysql"
 )
 
-var bot  *qqbotapi.BotAPI
-var db   *sql.DB
-var keyWords = [11]string {
+var bot *qqbotapi.BotAPI
+var db *sql.DB
+var keyWords = [11]string{
 	"转蛋单抽", "转蛋十连", "转蛋奖池", "HOMOSPACE", "编辑HOMO", "我的转蛋券", "HOMO图鉴", "准备对战", "收集排行", "群登记", "Document",
 }
 
+var CDKMap map[string]int64
+var GroupList = [1]int64{930378083}
 
-//const Host = "39.106.219.180"
-const Host = "127.0.0.1"
-
-const (
-	userName = "root"
-	password = "^52]pt*xz+g^03_C#YHb"
-	//ip       = "39.106.219.180"
-	ip       = "127.0.0.1"
-	port     = "3306"
-	dbName   = "homospace"
-)
-
-var CDKMap    map[string] int64
-var GroupList = [1]int64 {930378083}
-
-var ChanList  []chan qqbotapi.Update
+var ChanList []chan qqbotapi.Update
 var ChanMutex sync.RWMutex
+
+const CQHttpConnKey = "cqhttp-ws-connect"
+const MySqlConnKey = "mysql-connect"
+
+func init() {
+	SendRandomCDK()
+}
 
 func main() {
 	var err error
-	bot, err = qqbotapi.NewBotAPI("", "ws://"+Host+":6700", "CQHTTP_SECRET")
+
+	cqhttpConf := util.GetObjectByKey(CQHttpConnKey).(map[interface{}]interface{})
+	bot, err = qqbotapi.NewBotAPI("",
+		strings.Join([]string{
+			"ws://",
+			cqhttpConf["ipv4"].(string),
+			":",
+			cqhttpConf["port"].(string),
+		}, ""), cqhttpConf["secret"].(string),
+	)
 	if err != nil {
 		log.Println(err)
 	}
 	bot.Debug = false
-	
+
 	conf := qqbotapi.NewUpdate(0)
 	conf.PreloadUserInfo = true
 	updates, err := bot.GetUpdatesChan(conf)
-	
-	path := strings.Join([]string{
-		userName, ":", password, "@tcp(",ip, ":", port, ")/", dbName, "?charset=utf8"},
-	"")
-		db, err = sql.Open("mysql", path)
-	//	"root:password@/homospace?charset=utf8")
-	//连接数据库，格式 用户名：密码@/数据库名？charset=编码方式
+	if err != nil {
+		log.Println(err)
+		panic("connect to websocket failed.")
+	}
+
+	mysqlConf := util.GetObjectByKey(MySqlConnKey).(map[interface{}]interface{})
+
+	connectStr := strings.Join([]string{
+		mysqlConf["username"].(string),
+		":",
+		mysqlConf["password"].(string),
+		"@tcp(",
+		mysqlConf["ipv4"].(string), ":", mysqlConf["port"].(string),
+		")/",
+		mysqlConf["db-name"].(string),
+	}, "")
+	db, err = sql.Open("mysql", connectStr)
 	if err != nil {
 		log.Println(err)
 		panic("open database-MySql failed.")
 	}
 	defer db.Close()
-	
+
 	dbTransition.Init(db)
 	lottery.Init(bot)
 	homo.Init(bot)
-	
+
 	CDKMap = make(map[string]int64)
 	go Time2SendCDK()
-	
+
 	for update := range updates {
 		// 判断消息属性
 		if update.Message == nil || update.MessageType != "group" {
@@ -128,12 +143,12 @@ func main() {
 		case 7:
 			go func() {
 				updateChan := make(chan qqbotapi.Update, 1)
-				
+
 				ChanMutex.Lock()
 				pos := len(ChanList)
 				ChanList = append(ChanList, updateChan)
 				ChanMutex.Unlock()
-				
+
 				homo.Prepare4Battle(
 					updateChan, //addMissionChan,
 					update.Message.From.ID,
@@ -196,7 +211,7 @@ func handleMsg(update qqbotapi.Update) {
 func PrintHelpInfo(groupID int64) {
 	msg := bot.NewMessage(groupID, "group").Text("")
 	for index, api := range keyWords {
-		msg = msg.Text(strconv.Itoa(index+1)+"."+api)
+		msg = msg.Text(strconv.Itoa(index+1) + "." + api)
 		msg = msg.NewLine()
 	}
 	msg.Text("12.查询 角色名").NewLine().
@@ -204,20 +219,21 @@ func PrintHelpInfo(groupID int64) {
 }
 
 func SendRandomCDK() {
-	cdk   := common.GetCDK()
-	group := GroupList[rand.Intn(len(GroupList))]
-	CDKMap[cdk] = group
-	bot.NewMessage(group, "group").Text("野生的CDK出现了！").NewLine().
-		Text(cdk).Send()
+	cdk := common.GetCDK()
+	for group := range util.GetObjectByKey("group-enable-homo-space").(map[int64]bool) {
+		CDKMap[cdk] = group
+		bot.NewMessage(group, "group").Text("野生的CDK出现了！").NewLine().
+			Text(cdk).Send()
+	}
 }
 
 func Time2SendCDK() {
 	for {
 		rand.Seed(time.Now().UnixNano())
-		duration := time.Hour * time.Duration(rand.Intn(2)) + time.Minute * time.Duration(rand.Intn(40) + 20)
-			//time.Minute * time.Duration(rand.Intn(10) + 10)
+		duration := time.Hour*time.Duration(rand.Intn(2)) + time.Minute*time.Duration(rand.Intn(40)+20)
+		//time.Minute * time.Duration(rand.Intn(10) + 10)
 		timer := time.NewTimer(duration)
-		<- timer.C
+		<-timer.C
 		SendRandomCDK()
 	}
 }

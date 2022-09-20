@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 	
-	"CQApp/src/dbTransition"
+	"homo-space/src/dbTransition"
 	"github.com/catsworld/qq-bot-api"
 )
 

@@ -34,10 +34,6 @@ var ChanMutex sync.RWMutex
 const CQHttpConnKey = "cqhttp-ws-connect"
 const MySqlConnKey = "mysql-connect"
 
-func init() {
-	SendRandomCDK()
-}
-
 func main() {
 	var err error
 
@@ -91,6 +87,9 @@ func main() {
 	for update := range updates {
 		// 判断消息属性
 		if update.Message == nil || update.MessageType != "group" {
+			continue
+		}
+		if _, ok := util.GetObjectByKey("group-enable-homo-space").(map[int64]bool)[update.GroupID]; !ok {
 			continue
 		}
 		// 向下一级分发消息
@@ -185,6 +184,10 @@ func main() {
 }
 
 func handleMsg(update qqbotapi.Update) {
+	if _, ok := util.GetObjectByKey("group-enable-homo-space").(map[int64]bool)[update.GroupID]; !ok {
+		return
+	}
+
 	if group, ok := CDKMap[update.Message.Text]; ok && group == update.GroupID {
 		go func() {
 			delete(CDKMap, update.Message.Text)

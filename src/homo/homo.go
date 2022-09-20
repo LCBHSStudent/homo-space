@@ -93,16 +93,17 @@ func EditHomo(
 						if list[1] != "N" && list[1] != "UR" && list[1] != "SR" {
 							aliasBot.NewMessage(fromGroup, "group").At(strconv.FormatInt(fromQQ, 10)).
 								NewLine().Text("操作失败, 不支持的稀有度").Send()
+							continue
+						}
+
+						db := dbTransition.GetConn()
+						_, err := db.Exec("INSERT INTO HOMO(NAME,RARE) VALUES(?,?)", list[0], list[1])
+						if err != nil {
+							aliasBot.NewMessage(fromGroup, "group").At(strconv.FormatInt(fromQQ, 10)).
+								NewLine().Text("操作失败, " + err.Error()).Send()
 						} else {
-							db := dbTransition.GetConn()
-							_, err := db.Exec("INSERT INTO HOMO(NAME,RARE) VALUES(?,?)", list[0], list[1])
-							if err != nil {
-								aliasBot.NewMessage(fromGroup, "group").At(strconv.FormatInt(fromQQ, 10)).
-									NewLine().Text("操作失败, " + err.Error()).Send()
-							} else {
-								aliasBot.NewMessage(fromGroup, "group").At(strconv.FormatInt(fromQQ, 10)).
-									NewLine().Text("操作成功").Send()
-							}
+							aliasBot.NewMessage(fromGroup, "group").At(strconv.FormatInt(fromQQ, 10)).
+								NewLine().Text("操作成功").Send()
 						}
 					}
 				}

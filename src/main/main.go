@@ -68,7 +68,7 @@ func main() {
 		"@tcp(",
 		mysqlConf["ipv4"].(string), ":", mysqlConf["port"].(string),
 		")/",
-		mysqlConf["db-name"].(string),
+		mysqlConf["homo-space-db-name"].(string),
 	}, "")
 	db, err = sql.Open("mysql", connectStr)
 	if err != nil {
